@@ -13,19 +13,22 @@ import subprocess
 
 TEMPO_PER_CURVARE_DI_90_GRADI = 0.5
 
-DR = 16
-DL = 19
+TRIG_DX = 17 #13
+ECHO_DX = 5
+
+TRIG_SX = 18
+ECHO_SX = 24
 SERVO = 27
-#TRIG = 17
-#ECHO = 5
 
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
-GPIO.setup(DR,GPIO.IN,GPIO.PUD_UP)
-GPIO.setup(DL,GPIO.IN,GPIO.PUD_UP)
+#GPIO.setup(DR,GPIO.IN,GPIO.PUD_UP)
+#GPIO.setup(DL,GPIO.IN,GPIO.PUD_UP)
 GPIO.setup(SERVO, GPIO.OUT, initial=GPIO.LOW) 
-#GPIO.setup(TRIG,GPIO.OUT,initial=GPIO.LOW)
-#GPIO.setup(ECHO,GPIO.IN)
+GPIO.setup(TRIG_DX,GPIO.OUT,initial=GPIO.LOW)
+GPIO.setup(ECHO_DX,GPIO.IN)
+GPIO.setup(TRIG_SX,GPIO.OUT,initial=GPIO.LOW)
+GPIO.setup(ECHO_SX,GPIO.IN)
 p = GPIO.PWM(SERVO,50)
 p.start(0)
 
@@ -35,42 +38,70 @@ clients = []
 #classe thread
 
 def ServoAngle(angle):
-	p.ChangeDutyCycle(2.5 + 10.0 * angle / 180)
+    	p.ChangeDutyCycle(2.5 + 10.0 * angle / 180)
 
-"""def Distance():
-	GPIO.output(TRIG,GPIO.HIGH)
+def Distance_DX():
+	GPIO.output(TRIG_DX,GPIO.HIGH)
 	time.sleep(0.000015)
-	GPIO.output(TRIG,GPIO.LOW)
-	while not GPIO.input(ECHO):
+	GPIO.output(TRIG_DX,GPIO.LOW)
+	while not GPIO.input(ECHO_DX):
 		pass
 	t1 = time.time()
-	while GPIO.input(ECHO):
+	while GPIO.input(ECHO_DX):
 		pass
 	t2 = time.time()
-	return (t2-t1)*34000/2"""
+	return (t2-t1)*34000/2
+
+def Distance_SX():
+	GPIO.output(TRIG_SX,GPIO.HIGH)
+	time.sleep(0.000015)
+	GPIO.output(TRIG_SX,GPIO.LOW)
+	while not GPIO.input(ECHO_SX):
+		pass
+	t1 = time.time()
+	while GPIO.input(ECHO_SX):
+		pass
+	t2 = time.time()
+	return (t2-t1)*34000/2
 
 def obstacle(Ab):
-    DR_status = GPIO.input(DR)
-    DL_status = GPIO.input(DL)
-    if((DL_status == 1) and (DR_status == 1)):
-        print("No ostacoli")
-    elif((DL_status == 1) and (DR_status == 0)):
-        Ab.left()
-        print("Ostacolo Destra")
-        time.sleep(1)   
-        Ab.stop()
-    elif((DL_status == 0) and (DR_status == 1)):
-        Ab.right()
-        print("Ostacolo Sinistra")
-        time.sleep(1)   
-        Ab.stop()
-    else:
-        Ab.backward()
-        time.sleep(0.2)
-        Ab.left()
-        time.sleep(0.2)
-        Ab.stop()
+    middleDistance_DX = Distance_DX() / 10
+    middleDistance_SX = Distance_SX() / 10
+
+    print("MiddleDistance DESTRA = %0.2f cm"%middleDistance_DX)
+    print("MiddleDistance SINISTRA = %0.2f cm"%middleDistance_SX)
+    
+    if (middleDistance_DX <= 3 and middleDistance_SX <= 3):
         print("Ostacolo Davanti")
+        Ab.backward()
+        time.sleep(0.3)
+        if(middleDistance_DX > middleDistance_SX):
+            print("Ostacolo Sinistra")
+            Ab.backward()
+            time.sleep(0.3)	
+            Ab.right()
+            time.sleep(0.3)
+        elif(middleDistance_DX < middleDistance_SX):
+            print("Ostacolo Destra")
+            Ab.backward()
+            time.sleep(0.3)
+            Ab.left()
+            time.sleep(0.3)
+    elif(middleDistance_DX <= 3):
+        print("Ostacolo Sinistra")
+        Ab.backward()
+        time.sleep(0.3)
+        Ab.right()
+        time.sleep(0.3)
+    elif(middleDistance_SX <= 3):
+        print("Ostacolo Destra")
+        Ab.backward()
+        time.sleep(0.3)
+        Ab.left()
+        time.sleep(0.3)
+    else:
+        print("No Ostacoli")
+        time.sleep(0.5)
 
 #funzione che si avvia alla creazione della classe
 def __init__(self, connessione, indirizzo ,alphabot):
@@ -269,11 +300,11 @@ def main():
                 time.sleep(0.02)"""
             
             if messaggio.upper().startswith("W"): #avanti 
-                for i in range(5):
-                    obstacle(Ab)
-                    Ab.forward()
-                    obstacle(Ab)
-                    time.sleep(0.1)        #durata del movimento
+                #for i in range(5):
+                obstacle(Ab)
+                Ab.forward()
+                obstacle(Ab)
+                time.sleep(0.1)        #durata del movimento
                 Ab.stop()
             if messaggio.upper().startswith("D"): #destra
                 Ab.right()
